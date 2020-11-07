@@ -35,12 +35,20 @@ namespace Genode {
 			{
 				/* extract label */
 				Session_label const label = label_from_args(args);
+				auto const name = label.last_element();
+
+				/* extract diag flag */
+				bool diag = session_diag_from_args(args).enabled;
 
 				/* find ROM module for trailing label element */
-				Rom_module const * rom = rom_fs.find(label.last_element().string());
-				if (rom)
-					return *rom;
+				Rom_module const * rom = rom_fs.find(name.string());
 
+				if (rom) {
+					if (diag) log("serve ROM \"", name, "\" to \"", label, "\"");
+					return *rom;
+				}
+
+				error("ROM not found for ", args);
 				throw Service_denied();
 			}
 
