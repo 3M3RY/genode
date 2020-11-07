@@ -47,6 +47,10 @@ struct Init::Main : Sandbox::State_handler
 		_config.update();
 
 		Xml_node const config = _config.xml();
+		if (config.has_type("empty")) {
+			error("failed to parse config ROM");
+			return;
+		};
 
 		bool reporter_enabled = false;
 		config.with_sub_node("report", [&] (Xml_node report) {
