@@ -16,10 +16,14 @@
 #define _INCLUDE__BASE__SESSION_LABEL_H_
 
 #include <base/snprintf.h>
+#include <base/log.h>
 #include <util/arg_string.h>
 #include <util/string.h>
 
-namespace Genode { struct Session_label; }
+namespace Genode {
+	struct Session_label;
+	class Label_overflow : Exception { };
+}
 
 struct Genode::Session_label : String<160>
 {
@@ -33,6 +37,8 @@ struct Genode::Session_label : String<160>
 		using String = String<capacity()>;
 		using String::String;
 
+		/* TODO: String::String can still truncate and break labels */
+
 		/**
 		 * Copy constructor
 		 *
@@ -41,7 +47,13 @@ struct Genode::Session_label : String<160>
 		 */
 		template <size_t N>
 		Session_label(Genode::String<N> const &other)
-		: Genode::String<160>(other) { }
+		: Genode::String<160>(other)
+		{
+			if (length() < other.length()) {
+				error(__func__, " overflow - «", other, "»");
+				throw Label_overflow();
+			}
+		}
 
 		Session_label last_element() const
 		{
@@ -90,8 +102,13 @@ namespace Genode {
 	inline Session_label label_from_args(char const *args)
 	{
 		char buf[Session_label::capacity()];
-		Arg_string::find_arg(args, "label").string(buf, sizeof(buf), "");
+		auto arg = Arg_string::find_arg(args, "label");
+		if (Session_label::capacity() <= arg.length()) {
+			error(__func__, " overflow - «", (char const *)args, "»");
+			throw Label_overflow();
+		}
 
+		arg.string(buf, sizeof(buf), "");
 		return Session_label(Cstring(buf));
 	}
 
@@ -103,6 +120,10 @@ namespace Genode {
 	                                    String<N2> const &label)
 	{
 		String<N1 + N2 + 4> const prefixed_label(prefix, " -> ", label);
+		if (Session_label::capacity() <= prefixed_label.length()) {
+			error(__func__, " overflow - «", prefix, "» - «", label, "»");
+			throw Label_overflow();
+		}
 		return Session_label(prefixed_label);
 	}
 }

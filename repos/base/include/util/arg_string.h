@@ -114,6 +114,12 @@ class Genode::Arg
 
 		inline bool valid() const { return _key; }
 
+		size_t length() const
+		{
+			return _value.type() == Token::STRING
+				? _value.len() - 2 : _value.len();
+		}
+
 		unsigned long ulong_value(unsigned long default_value) const
 		{
 			unsigned long value = 0;
