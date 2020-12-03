@@ -841,6 +841,41 @@ class Vfs_server::Root : public Genode::Root_component<Session_component>,
 				Genode::Signal_transmitter(_reactivate_handler).submit();
 		}
 
+		/**
+		 * Open a directory, ensuring all parent directories exists.
+		 */
+		void _create_session_dir(Path const &path)
+		{
+			using namespace Genode;
+			typedef Vfs::Directory_service::Opendir_result Result;
+
+			Vfs_handle *handle { nullptr };
+			Vfs::File_system &vfs = _vfs_env.root_dir();
+
+			switch (vfs.opendir(path.string(), true, &handle, _vfs_heap)) {
+			case Result::OPENDIR_OK:
+				handle->close();
+				return;
+			case Result::OPENDIR_ERR_NODE_ALREADY_EXISTS:
+				if (vfs.directory(path.string())) return;
+				break;
+			case Result::OPENDIR_ERR_LOOKUP_FAILED: {
+				Path parent = path;
+				parent.strip_last_element();
+				_create_session_dir(parent.string());
+				auto res = vfs.opendir(path.string(), true, &handle, _vfs_heap);
+				if (res == Result::OPENDIR_OK) {
+					handle->close();
+					return;
+				}
+			}
+			default: break;
+			}
+
+			error("cannot create session root at ", path);
+			throw Service_denied();
+		}
+
 	protected:
 
 		Session_component *_create_session(const char *args) override
@@ -916,10 +951,14 @@ class Vfs_server::Root : public Genode::Root_component<Session_component>,
 			}
 
 			/* check if the session root exists */
-			if (!((session_root == "/")
-			 || _vfs_env.root_dir().directory(session_root.base()))) {
-				error("session root '", session_root, "' not found for '", label, "'");
-				throw Service_denied();
+			if (session_root != "/") {
+				if (!_vfs_env.root_dir().directory(session_root.base())) {
+					if (writeable) { _create_session_dir(session_root); }
+					else {
+						error("session root '", session_root, "' not found for '", label, "'");
+						throw Service_denied();
+					}
+				}
 			}
 
 			Session_component *session = new (md_alloc())
