@@ -27,7 +27,7 @@ class Vfs::Tar_file_system : public File_system
 	Genode::Env       &_env;
 	Genode::Allocator &_alloc;
 
-	typedef Genode::String<64> Rom_name;
+	typedef Genode::String<128> Rom_name;
 	Rom_name _rom_name;
 
 	Genode::Attached_rom_dataspace _tar_ds { _env, _rom_name.string() };
