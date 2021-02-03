@@ -56,8 +56,16 @@ struct Vfs::Global_file_system_factory::Entry_base : Vfs::File_system_factory,
 
 	Entry_base(Fs_type_name const &name) : name(name) { }
 
-	bool matches(Genode::Xml_node node) const {
-		return node.has_type(name.string()); }
+	bool matches(Genode::Xml_node node) const
+	{
+		if (node.has_type(name.string()))
+			return true;
+
+		if (node.has_type("plugin") && node.has_attribute("load"))
+			return node.attribute("load").has_value(name.string());
+
+		return false;
+	}
 };
 
 
@@ -165,14 +173,25 @@ Vfs::File_system_factory &Vfs::Global_file_system_factory::_load_factory(Vfs::En
 bool Vfs::Global_file_system_factory::_probe_external_factory(Vfs::Env &env,
                                                               Genode::Xml_node node)
 {
-	Library_name const lib_name = _library_name(node.type());
-
 	try {
-		_list.insert(new (env.alloc())
-			External_entry(node.type().string(), _load_factory(env, lib_name)));
-		return true;
+		if (node.has_type("plugin")) {
+			Library_name const lib_name = node.attribute_value("load", Library_name(""));
 
+			if (lib_name == "") {
+				error("missing \"load\" attribute at ", node);
+				return false;
+			}
+
+			_list.insert(new (env.alloc())
+				External_entry(lib_name.string(), _load_factory(env, lib_name)));
+		} else {
+			Library_name const lib_name = _library_name(node.type());
+
+			_list.insert(new (env.alloc())
+				External_entry(node.type().string(), _load_factory(env, lib_name)));
+		}
 	} catch (Factory_not_available) { return false; }
+	return true;
 }
 
 
