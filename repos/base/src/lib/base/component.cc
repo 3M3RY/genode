@@ -122,6 +122,10 @@ namespace {
 		                           Affinity             const &affinity) override
 		{
 			Mutex::Guard guard(_mutex);
+			if (!args.valid_string()) {
+				error("invalid args for ", name.string(), " service request");
+				throw Service_denied();
+			}
 
 			/*
 			 * Since we account for the backing store for session meta data on
