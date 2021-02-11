@@ -54,7 +54,7 @@ class Genode::Parent
 	public:
 
 		typedef Rpc_in_buffer<64>  Service_name;
-		typedef Rpc_in_buffer<160> Session_args;
+		typedef Rpc_in_buffer<240> Session_args;
 		typedef Rpc_in_buffer<160> Upgrade_args;
 
 		struct Client : Interface { typedef Id_space<Client>::Id Id; };
