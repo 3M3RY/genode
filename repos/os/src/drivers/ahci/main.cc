@@ -346,6 +346,8 @@ struct Ahci::Main : Rpc_object<Typed_root<Block::Session>>,
 	Session_capability session(Root::Session_args const &args,
 	                            Affinity const &) override
 	{
+		config.update();
+
 		Session_label const label = label_from_args(args.string());
 		Session_policy const policy(label, config.xml());
 

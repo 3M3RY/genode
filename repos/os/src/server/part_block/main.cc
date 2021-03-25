@@ -306,6 +306,7 @@ class Block::Main : Rpc_object<Typed_root<Session>>,
 			long num = -1;
 			bool writeable = false;
 
+			_config.update();
 			Session_label const label = label_from_args(args.string());
 			try {
 				Session_policy policy(label, _config.xml());
