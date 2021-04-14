@@ -121,7 +121,7 @@ struct Framebuffer::Session_component : Genode::Rpc_object<Framebuffer::Session>
 
 	bool _dataspace_is_new = true;
 
-	bool _ram_suffices_for_mode(Framebuffer::Mode mode) const
+	bool ram_suffices_for_mode(Framebuffer::Mode mode) const
 	{
 		/* calculation in bytes */
 		size_t const used      = _buffer_num_bytes,
@@ -152,11 +152,6 @@ struct Framebuffer::Session_component : Genode::Rpc_object<Framebuffer::Session>
 			return;
 
 		Framebuffer::Mode const mode { .area = size };
-
-		if (!_ram_suffices_for_mode(mode)) {
-			Genode::warning("insufficient RAM for mode ", mode);
-			return;
-		}
 
 		_next_mode = mode;
 
@@ -372,7 +367,20 @@ struct Nit_fb::Main : View_updater
 			if (height < 0) height = gui_height + height;
 		}
 
-		fb_session.size(Area(width, height));
+		Framebuffer::Mode mode { .area = Area(width, height) };
+		bool reduced = false;
+
+		while (!fb_session.ram_suffices_for_mode(mode)) {
+			mode.area = Area(
+				(mode.area.w() / 4) * 3,
+				(mode.area.h() / 4) * 3);
+			reduced = true;
+		}
+
+		if (reduced)
+			Genode::warning("insufficient RAM, requested mode reduced to ", mode);
+
+		fb_session.size(mode.area);
 	}
 
 	void handle_config_update()
