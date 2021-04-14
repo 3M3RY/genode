@@ -107,7 +107,7 @@ struct Framebuffer::Main
 		log("using boot framebuffer: ", _info);
 
 		_timer.sigh(_timer_handler);
-		_timer.trigger_periodic(10*1000);
+		_timer.trigger_periodic((1000*1000)/60);
 	}
 };
 
