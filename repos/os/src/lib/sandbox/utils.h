@@ -188,13 +188,19 @@ namespace Sandbox {
 	 */
 	inline Prio_levels prio_levels_from_xml(Xml_node config)
 	{
-		long const prio_levels = config.attribute_value("prio_levels", 0UL);
+		long prio_levels = config.attribute_value("prio_levels", 0UL);
 
-		if (prio_levels && ((prio_levels >= (long)sizeof(prio_levels)*8) ||
-		                    (prio_levels != (1L << log2(prio_levels))))) {
-			warning("prio levels is not power of two, priorities are disabled");
+		if (prio_levels && (prio_levels >= (long)sizeof(prio_levels)*8)) {
+			warning("invalid prio_levels ", prio_levels, " priorities are disabled");
 			return Prio_levels { 0 };
 		}
+
+		long const prio_log2 = log2(prio_levels);
+		if (prio_levels != (1L << prio_log2)) {
+			prio_levels = 1L << (prio_log2+1);
+			log("priority levels increased to ", prio_levels);
+		}
+
 		return Prio_levels { prio_levels };
 	}
 
