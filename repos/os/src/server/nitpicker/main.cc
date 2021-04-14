@@ -88,9 +88,11 @@ class Nitpicker::Gui_root : public Root_component<Gui_session>,
 
 		Gui_session *_create_session(const char *args) override
 		{
+			auto config = _config.xml();
 			Session_label const label = label_from_args(args);
+			Session_policy policy(label, config);
 
-			bool const provides_default_bg = (label == "backdrop");
+			bool provides_default_bg = policy.attribute_value("backdrop", false);
 
 			Gui_session *session = new (md_alloc())
 				Gui_session(_env,
@@ -100,9 +102,9 @@ class Nitpicker::Gui_root : public Root_component<Gui_session>,
 				            _builtin_background, provides_default_bg,
 				            _focus_reporter, *this);
 
-			session->apply_session_policy(_config.xml(), _domain_registry);
+			session->apply_session_policy(config, _domain_registry);
 			_session_list.insert(session);
-			_global_keys.apply_config(_config.xml(), _session_list);
+			_global_keys.apply_config(config, _session_list);
 			_focus_updater.update_focus();
 			_hover_updater.update_hover();
 
