@@ -11,6 +11,8 @@
  * under the terms of the GNU Affero General Public License version 3.
  */
 
+#include <os/session_policy.h>
+#include <base/attached_rom_dataspace.h>
 #include <root/component.h>
 #include <base/component.h>
 #include <base/heap.h>
@@ -28,9 +30,12 @@ namespace Genode {
 
 			enum { LABEL_LEN = 64 };
 
+			typedef Genode::String<LABEL_LEN> Label;
+
 		private:
 
-			char                  _label[LABEL_LEN];
+			Label const _label;
+
 			Terminal::Connection &_terminal;
 
 		public:
@@ -39,7 +44,7 @@ namespace Genode {
 			 * Constructor
 			 */
 			Termlog_component(const char *label, Terminal::Connection &terminal)
-			: _terminal(terminal) { snprintf(_label, LABEL_LEN, "[%s] ", label); }
+			: _label(label), _terminal(terminal) { }
 
 
 			/*****************
@@ -76,7 +81,7 @@ namespace Genode {
 					return;
 				}
 
-				_terminal.write(_label, strlen(_label));
+				_terminal.write(_label.string(), _label.length());
 				_terminal.write(string, len);
 
 				/* if last character of string was not a line break, add one */
@@ -93,7 +98,8 @@ namespace Genode {
 	{
 		private:
 
-			Terminal::Connection _terminal;
+			Genode::Env          &_env;
+			Terminal::Connection  _terminal { _env, "log" };
 
 		protected:
 
@@ -102,12 +108,23 @@ namespace Genode {
 			 */
 			Termlog_component *_create_session(const char *args) override
 			{
-				char label_buf[Termlog_component::LABEL_LEN];
+				Session_label const session_label = label_from_args(args);
 
-				Arg label_arg = Arg_string::find_arg(args, "label");
-				label_arg.string(label_buf, sizeof(label_buf), "");
-
-				return new (md_alloc()) Termlog_component(label_buf, _terminal);
+				try {
+					Attached_rom_dataspace config_rom(_env, "config");
+					Session_policy policy(session_label, config_rom.xml());
+					auto label = policy.attribute_value(
+						"log_label", Termlog_component::Label());
+					return new (md_alloc())
+						Termlog_component(label.string(), _terminal);
+				}
+				catch (...) {
+					char label_buf[Termlog_component::LABEL_LEN];
+					snprintf(label_buf, sizeof(label_buf),
+					         "[%s] ", session_label.string());
+					return new (md_alloc())
+						Termlog_component(label_buf, _terminal);
+				}
 			}
 
 		public:
@@ -120,7 +137,7 @@ namespace Genode {
 			 */
 			Termlog_root(Genode::Env &env, Allocator &md_alloc)
 			: Root_component<Termlog_component>(env.ep(), md_alloc),
-			  _terminal(env, "log") { }
+			  _env(env) { }
 	};
 }
 
